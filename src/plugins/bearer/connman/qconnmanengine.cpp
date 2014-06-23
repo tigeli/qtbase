@@ -266,12 +266,11 @@ QNetworkSession::State QConnmanEngine::sessionStateForId(const QString &id)
         return QNetworkSession::Disconnected;
     }
 
-    if (servState == QLatin1String("association") || servState == QLatin1String("configuration")
-            || servState == QLatin1String("ready")) {
+    if (servState == QLatin1String("association") || servState == QLatin1String("configuration")) {
         return QNetworkSession::Connecting;
     }
 
-    if (servState == QLatin1String("online")) {
+    if (servState == QLatin1String("online") || servState == QLatin1String("ready")) {
         return QNetworkSession::Connected;
     }
 
@@ -431,7 +430,7 @@ QNetworkConfiguration::StateFlags QConnmanEngine::getStateForService(const QStri
             flag = QNetworkConfiguration::Undefined;
         }
     }
-    if (state == QLatin1String("online")) {
+    if (state == QLatin1String("online") || state == QLatin1String("ready")) {
         flag = (flag | QNetworkConfiguration::Active);
     }
 
