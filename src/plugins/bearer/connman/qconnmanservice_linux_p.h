@@ -145,6 +145,7 @@ private slots:
 
     void propertiesReply(QDBusPendingCallWatcher *call);
     void servicesReply(QDBusPendingCallWatcher *call);
+    void technologiesReply(QDBusPendingCallWatcher *call);
 
     void technologyAdded(const QDBusObjectPath &technology, const QVariantMap &properties);
     void technologyRemoved(const QDBusObjectPath &technology);
@@ -222,6 +223,8 @@ private:
     QVariantMap propertiesMap;
     void scanReply(QDBusPendingCallWatcher *call);
 
+private slots:
+    void propertiesReply(QDBusPendingCallWatcher *call);
 };
 
 QT_END_NAMESPACE

@@ -203,11 +203,11 @@ QVariant QConnmanManagerInterface::getProperty(const QString &property)
 QVariantMap QConnmanManagerInterface::getProperties()
 {
     if (propertiesCacheMap.isEmpty()) {
-        QDBusPendingReply<QVariantMap> reply = call(QLatin1String("GetProperties"));
-        reply.waitForFinished();
-        if (!reply.isError()) {
-            propertiesCacheMap = reply.value();
-        }
+        QDBusPendingReply<QVariantMap> reply = asyncCall(QLatin1String("GetProperties"));
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
+
+        QObject::connect(watcher,SIGNAL(finished(QDBusPendingCallWatcher*)),
+                         this, SLOT(propertiesReply(QDBusPendingCallWatcher*)));
     }
     return propertiesCacheMap;
 }
@@ -226,29 +226,40 @@ bool QConnmanManagerInterface::getOfflineMode()
 QStringList QConnmanManagerInterface::getTechnologies()
 {
     if (technologiesMap.isEmpty()) {
-        QDBusPendingReply<ConnmanMapList> reply = call(QLatin1String("GetTechnologies"));
-        reply.waitForFinished();
-        if (!reply.isError()) {
-            Q_FOREACH (ConnmanMap map, reply.value()) {
-                if (!technologiesMap.contains(map.objectPath.path())) {
-                    technologyAdded(map.objectPath, map.propertyMap);
-                }
-            }
-        }
+        QDBusPendingReply<ConnmanMapList> reply = asyncCall(QLatin1String("GetTechnologies"));
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
+
+        QObject::connect(watcher,SIGNAL(finished(QDBusPendingCallWatcher*)),
+                         this, SLOT(technologiesReply(QDBusPendingCallWatcher*)));
     }
     return technologiesMap.keys();
+}
+
+void QConnmanManagerInterface::technologiesReply(QDBusPendingCallWatcher *call)
+{
+    QDBusPendingReply<ConnmanMapList> props_reply = *call;
+    call->deleteLater();
+    if (props_reply.isError()) {
+        qDebug() << props_reply.error().message();
+        return;
+    }
+    if (!props_reply.isError()) {
+        Q_FOREACH (ConnmanMap map, props_reply.value()) {
+            if (!technologiesMap.contains(map.objectPath.path())) {
+                technologyAdded(map.objectPath, map.propertyMap);
+            }
+         }
+     }
 }
 
 QStringList QConnmanManagerInterface::getServices()
 {
     if (servicesList.isEmpty()) {
-        QDBusPendingReply<ConnmanMapList> reply = call(QLatin1String("GetServices"));
-        reply.waitForFinished();
-        if (!reply.isError()) {
-            Q_FOREACH (ConnmanMap map, reply.value()) {
-                servicesList << map.objectPath.path();
-            }
-        }
+        QDBusPendingReply<ConnmanMapList> reply = asyncCall(QLatin1String("GetServices"));
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
+
+        QObject::connect(watcher,SIGNAL(finished(QDBusPendingCallWatcher*)),
+                         this, SLOT(servicesReply(QDBusPendingCallWatcher*)));
     }
     return servicesList;
 }
@@ -310,8 +321,12 @@ QConnmanServiceInterface::~QConnmanServiceInterface()
 QVariantMap QConnmanServiceInterface::getProperties()
 {
     if (propertiesCacheMap.isEmpty()) {
-        QDBusPendingReply<QVariantMap> reply = call(QLatin1String("GetProperties"));
-        reply.waitForFinished();
+        QDBusPendingReply<QVariantMap> reply = asyncCall(QLatin1String("GetProperties"));
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
+
+        QObject::connect(watcher,SIGNAL(finished(QDBusPendingCallWatcher*)),
+                         this, SLOT(propertiesReply(QDBusPendingCallWatcher*)));
+
         if (!reply.isError()) {
             propertiesCacheMap = reply.value();
             Q_EMIT propertiesReady();
@@ -323,6 +338,7 @@ QVariantMap QConnmanServiceInterface::getProperties()
 void QConnmanServiceInterface::propertiesReply(QDBusPendingCallWatcher *call)
 {
     QDBusPendingReply<QVariantMap> props_reply = *call;
+    call->deleteLater();
     if (props_reply.isError()) {
         qDebug() << props_reply.error().message();
         return;
@@ -474,12 +490,29 @@ void QConnmanTechnologyInterface::connectNotify(const QMetaMethod &signal)
 QVariantMap QConnmanTechnologyInterface::properties()
 {
     if (propertiesMap.isEmpty()) {
-        QDBusPendingReply<QVariantMap> reply = call(QLatin1String("GetProperties"));
-        reply.waitForFinished();
-        propertiesMap = reply.value();
+        QDBusPendingReply<QVariantMap> reply = asyncCall(QLatin1String("GetProperties"));
+        QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
+
+        QObject::connect(watcher,SIGNAL(finished(QDBusPendingCallWatcher*)),
+                         this, SLOT(propertiesReply(QDBusPendingCallWatcher*)));
+        if (!reply.isError()) {
+            propertiesMap = reply.value();
+        }
     }
     return propertiesMap;
 }
+
+void QConnmanTechnologyInterface::propertiesReply(QDBusPendingCallWatcher *call)
+{
+    QDBusPendingReply<QVariantMap> props_reply = *call;
+    call->deleteLater();
+    if (props_reply.isError()) {
+        qDebug() << props_reply.error().message();
+        return;
+    }
+    propertiesMap = props_reply.value();
+}
+
 
 QVariant QConnmanTechnologyInterface::getProperty(const QString &property)
 {
